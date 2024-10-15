@@ -38,8 +38,6 @@ class Uncertainty(Hardware):
         self.high_thresh = 50000 # just under 3v
         self.low_thresh = 40000 # around 1v
         self.triggers = [False, False] # [Falling, Rising]
-        if loop is not None:
-
 
     def check_gate(self, high=True):
         if high:
