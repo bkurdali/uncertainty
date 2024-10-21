@@ -12,21 +12,9 @@ from adafruit_midi.note_off import NoteOff
 from adafruit_midi.control_change import ControlChange
 from adafruit_midi.pitch_bend import PitchBend
 
+from oam import Uncertainty
 
-cv_in = AnalogIn(board.A0)
-gates = [
-    digitalio.DigitalInOut(board.D1),
-    digitalio.DigitalInOut(board.D2),
-    digitalio.DigitalInOut(board.D3),
-    digitalio.DigitalInOut(board.D6),
-    digitalio.DigitalInOut(board.D10),
-    digitalio.DigitalInOut(board.D9),
-    digitalio.DigitalInOut(board.D8),
-    digitalio.DigitalInOut(board.D7),
-]
-
-for gate in gates:
-    gate.direction = digitalio.Direction.OUTPUT
+unc = Uncertainty()
 
 midi = adafruit_midi.MIDI(
     midi_in=usb_midi.ports[0],
@@ -39,10 +27,14 @@ midi = adafruit_midi.MIDI(
 old_cv = 0
 last_cc_val = 0
 
+cv_min = 5900
+cv_max = 64300
+usable_rangle = cv_max - cv_min
+
 def play_note(note, state):
-    for x in range(0, len(midi_notes)):
-        if midi_notes[x] == note:
-            gates[x].value = state
+    for i in range(0, len(midi_notes)):
+        if midi_notes[i] == note:
+            unc.outs[i].value = state
             return
 
 while True:
@@ -60,18 +52,17 @@ while True:
 
     # get the cv in from eurorack and send it as a midi controller
         # lets only do this stuff if the raw data has actually by a significant amount
-    if abs(old_cv - cv_in.value) > 256:
-        # convert the 16-bit incomving value to a 7-bit value for midi control changes
-        cv_raw = max(cv_in.value, 5900)
-        cv_raw = min(cv_raw, 64300)
+    new_cv = unc.adc.value
+    if abs(old_cv - new_cv) > 256:
+        # convert the 16-bit incoming value to a 7-bit value for midi control changes
+        cv_raw = min(max(new_cv, cv_min), cv_max)
 
-        usable_rangle = (64300 - 5900)
-        ctl_val = int((((cv_raw - 5900) * 127) / usable_rangle) + 0)
+        ctl_val = int((((cv_raw - cv_min) * 127) / usable_rangle) + 0)
 
         if ctl_val is not last_cc_val:
             cc = ControlChange(1, ctl_val)
             midi.send(cc)
 
         # store old values for next cycle
-        old_cv = cv_in.value
+        old_cv = new_cv
         last_cc_val = ctl_val
