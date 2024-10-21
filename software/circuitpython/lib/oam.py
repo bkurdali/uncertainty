@@ -7,20 +7,20 @@ import pwmio
 
 class Hardware:
     """ Try to keep board specific/magic values and functions in one place """
-    pwm_freq = 1000000
+    pwm_freq = 10000000
     pins = ["D1", "D2", "D3", "D6", "D10", "D9", "D8", "D7"] # Board specific
     adc_pin = "A0" # Board specific
     OUTPUT, INPUT = (digitalio.Direction.OUTPUT, digitalio.Direction.INPUT)
 
     adc = AnalogIn(getattr(board, adc_pin))
 
-    def _set_digital_IO(pin_id, direction=OUTPUT):
+    def _set_digital_IO(self, pin_id, direction=OUTPUT):
         """ Sets an on/off pin (in or out based on direction)"""
-        pin = digitalio.DigitalInout(getattr(board, pin_id))
-        pin = direction
+        pin = digitalio.DigitalInOut(getattr(board, pin_id))
+        pin.direction = direction
         return pin
 
-    def _set_pwm_out(pin_id, frequency=pwm_frequency, duty_cycle=0):
+    def _set_pwm_out(self, pin_id, frequency=pwm_freq, duty_cycle=0):
         """ Sets a PWM output pin"""
         return pwmio.PWMOut(
             getattr(board, pin_id),
@@ -30,7 +30,6 @@ class Hardware:
 class Uncertainty(Hardware):
 
     def __init__(self, outputMode='digital', loop=None):
-        # self.adc = AnalogIn(getattr(board, self.adc_pin))
         if (outputMode == 'digital'):
             self.outs = [self._set_digital_IO(pin) for pin in self.pins]
         elif (outputMode == 'pwm'):
@@ -46,7 +45,7 @@ class Uncertainty(Hardware):
 
     def _detect_edge(self, high=True):
         """ Detect a high(True) or low(False) edge """
-        if not self.check_gate(high=high): # didn't trigger
+        if self.check_gate(high=not high): # opposite state
             self.triggers[high] = False
             return False
         if self.triggers[high]: # already triggered
@@ -54,10 +53,6 @@ class Uncertainty(Hardware):
         # new edge
         self.triggers[high] = True
         return True
-
-    def gaterator(self):
-        while True:
-            yield self._detect_edge(high=True)
 
     @property
     def rising_edge(self):
@@ -73,12 +68,17 @@ class Uncertainty(Hardware):
             return True
         return False
 
-   @property
-   def gate_on(self):
+    @property
+    def gate_on(self):
         return self._check_level(high=True)
 
     @property
     def gate_off(self):
+        if self._check_level(high=False):
+            self.triggers[True] = False
+            return True
+        else:
+            return False
         return self._check_level(high=False)
 
     def lights_out(self):
