@@ -27,76 +27,42 @@ class Hardware:
             frequency=frequency, duty_cycle=duty_cycle)
 
 
+class Trigger:
+    __slots__ = "gate_on", "edge_rising", "edge_falling"
+
+
 class Uncertainty(Hardware):
 
-    def __init__(self, outputMode='digital', loop=None):
+    def __init__(self, outputMode='digital'):
         if (outputMode == 'digital'):
             self.outs = [self._set_digital_IO(pin) for pin in self.pins]
         elif (outputMode == 'pwm'):
             self.outs = [self._set_pwm_out(pin) for pin in self.pins]
         self.high_thresh = 50000 # just under 3v
         self.low_thresh = 40000 # around 1v
-        self.triggers = [False, False] # [Falling, Rising]
+
         self.saw_falling = self.saw_rising = False
+        Trigger.gate_on = Trigger.edge_rising = Trigger.edge_falling = False
 
     def state(self):
-        level = self.adc.value
-        if level > self.high_thresh:
-            self.saw_falling = False
-            high = True #call level_high function if there is one
-            if not self.saw_rising:
+        while True:
+            level = self.adc.value
+            if level > self.high_thresh:
+                Trigger.gate_on = True
+                Trigger.edge_falling = False
+                Trigger.edge_rising = not self.saw_rising
+
+                self.saw_falling = False
                 self.saw_rising = True
-                rising = True# call rising_edge function if there is one
-        elif level < self.low_thresh:
-            self.saw_rising = False
-            low = True# call level_low function if there is one
-            if not self.saw_falling:
+
+            elif level < self.low_thresh:
+                Trigger.gate_on = False
+                Trigger.edge_rising = False
+                Trigger.edge_falling = not self.saw_falling
+
+                self.saw_rising = False
                 self.saw_falling = True
-                falling = True#call falling_edge function if there is one
-        return high,rising,low,falling
-
-    def check_gate(self, high=True):
-        if high:
-            return self.adc.value > self.high_thresh
-        return self.adc.value < self.low_thresh
-
-    def _detect_edge(self, high=True):
-        """ Detect a high(True) or low(False) edge """
-        if self.check_gate(high=not high): # opposite state
-            self.triggers[high] = False
-            return False
-        if self.triggers[high]: # already triggered
-            return False
-        # new edge
-        self.triggers[high] = True
-        return True
-
-    @property
-    def rising_edge(self):
-        return self._detect_edge(high=True)
-
-    @property
-    def falling_edge(self):
-        return self._detect_edge(high=False)
-
-    def _check_level(self, high=True):
-        if self.check_gate(high):
-            self.triggers[high] = True
-            return True
-        return False
-
-    @property
-    def gate_on(self):
-        return self._check_level(high=True)
-
-    @property
-    def gate_off(self):
-        if self._check_level(high=False):
-            self.triggers[True] = False
-            return True
-        else:
-            return False
-        return self._check_level(high=False)
+            yield Trigger
 
     def lights_out(self):
         for out in self.outs:
