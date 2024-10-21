@@ -33,8 +33,7 @@ for leng in walkLengths:
 
 fiveV = 65535
 
-while True:
-
-    if unc.isRisingEdge():
+for trigger in unc.state():
+    if trigger.edge_rising:
         for i, w in enumerate(walks):
             unc.outs[i].duty_cycle = int(w.step() * (fiveV/walkLengths[i]))
