@@ -37,6 +37,23 @@ class Uncertainty(Hardware):
         self.high_thresh = 50000 # just under 3v
         self.low_thresh = 40000 # around 1v
         self.triggers = [False, False] # [Falling, Rising]
+        self.saw_falling = self.saw_rising = False
+
+    def state(self):
+        level = self.adc.value
+        if level > self.high_thresh:
+            self.saw_falling = False
+            high = True #call level_high function if there is one
+            if not self.saw_rising:
+                self.saw_rising = True
+                rising = True# call rising_edge function if there is one
+        elif level < self.low_thresh:
+            self.saw_rising = False
+            low = True# call level_low function if there is one
+            if not self.saw_falling:
+                self.saw_falling = True
+                falling = True#call falling_edge function if there is one
+        return high,rising,low,falling
 
     def check_gate(self, high=True):
         if high:
