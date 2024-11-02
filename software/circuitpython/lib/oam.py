@@ -65,13 +65,13 @@ class Uncertainty(Hardware):
                 Trigger.edge_falling = False
                 Trigger.gate_on = True
                 saw_falling = False
-                saw_rising = True
+                saw_rising = True # for next time
             elif level < self.low_thresh:
                 Trigger.edge_falling = not saw_falling # first time
                 Trigger.edge_rising = False
                 Trigger.gate_on = False
                 saw_rising = False
-                saw_falling = True
+                saw_falling = True # for next time
             yield Trigger
 
     def lights_out(self):
