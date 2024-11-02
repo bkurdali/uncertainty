@@ -41,9 +41,6 @@ class Uncertainty(Hardware):
         self.high_thresh = 50000 # just under 3v
         self.low_thresh = 40000 # around 1v
 
-        self.saw_falling = self.saw_rising = False
-        Trigger.gate_on = Trigger.edge_rising = Trigger.edge_falling = False
-
     def state(self):
         """
         Call from a for loop e.g.
@@ -55,23 +52,22 @@ class Uncertainty(Hardware):
         t.gate_on is set True if the adc is above the high threshold,
                   and set False if the adc is below the low threshold
         """
+        # Initialization:
+        Trigger.gate_on = Trigger.edge_rising = Trigger.edge_falling = False
+        saw_falling = saw_rising = False
+        # Loop:
         while True:
             level = self.adc.value
             if level > self.high_thresh:
                 Trigger.gate_on = True
                 Trigger.edge_falling = False
-                Trigger.edge_rising = not self.saw_rising
-
-                self.saw_falling = False
-                self.saw_rising = True
-
+                Trigger.edge_rising = not saw_rising
+                saw_falling, saw_rising = False, True
             elif level < self.low_thresh:
                 Trigger.gate_on = False
                 Trigger.edge_rising = False
-                Trigger.edge_falling = not self.saw_falling
-
-                self.saw_rising = False
-                self.saw_falling = True
+                Trigger.edge_falling = not saw_falling
+                saw_rising, saw_falling = False, True
             yield Trigger
 
     def lights_out(self):
