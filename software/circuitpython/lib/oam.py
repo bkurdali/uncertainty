@@ -61,15 +61,17 @@ class Uncertainty(Hardware):
         while True:
             level = self.adc.value
             if level > self.high_thresh:
-                Trigger.gate_on = True
+                Trigger.edge_rising = not saw_rising # first time
                 Trigger.edge_falling = False
-                Trigger.edge_rising = not saw_rising
-                saw_falling, saw_rising = False, True
+                Trigger.gate_on = True
+                saw_falling = False
+                saw_rising = True
             elif level < self.low_thresh:
-                Trigger.gate_on = False
+                Trigger.edge_falling = not saw_falling # first time
                 Trigger.edge_rising = False
-                Trigger.edge_falling = not saw_falling
-                saw_rising, saw_falling = False, True
+                Trigger.gate_on = False
+                saw_rising = False
+                saw_falling = True
             yield Trigger
 
     def lights_out(self):
