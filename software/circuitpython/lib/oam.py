@@ -47,7 +47,9 @@ class Uncertainty(Hardware):
         for t in uncertainty.state():
             if t.edge_rising: # or edge_falling or gate_on
                 do_something
-        t.edge_rising is True if we have just detected a rising edge, False otherwise
+
+        t.edge_rising is True if we have just detected a rising edge,
+                  False otherwise
         t.edge_falling is similar for a falling edge
         t.gate_on is set True if the adc is above the high threshold,
                   and set False if the adc is below the low threshold
